@@ -1,0 +1,12 @@
+FROM --platform=$TARGETPLATFORM alpine AS build
+
+RUN apk add --no-cache g++ make libpng-dev libpng-static zlib-static
+
+COPY . /TerminalImageViewer
+WORKDIR /TerminalImageViewer/src
+
+RUN make && cp tiv /tiv
+
+FROM scratch AS final
+
+COPY --from=build /TerminalImageViewer/src/tiv /tiv

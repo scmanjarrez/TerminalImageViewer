@@ -1,0 +1,50 @@
+name: Build and release tiv
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build binary in Alpine with Docker
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.build
+          platforms: linux/${{ matrix.arch }}
+          outputs: type=local,dest=output-${{ matrix.arch }}
+
+      - name: Rename and upload binary
+        run: |
+          mv output-${{ matrix.arch }}/tiv tiv-linux-${{ matrix.arch }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tiv-${{ matrix.arch }}
+          path: tiv-linux-${{ matrix.arch }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Release binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/tiv-linux-*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
